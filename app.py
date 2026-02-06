@@ -26,16 +26,46 @@ if "history" not in st.session_state:
     st.session_state.history = []
 if "network_info" not in st.session_state:
     st.session_state.network_info = None
+if "attack_memory" not in st.session_state:
+    st.session_state.attack_memory = {
+        "Malware": 0,
+        "Ransomware": 0,
+        "Brute Force": 0,
+        "DDoS": 0
+    }
 
 # =====================================================
-# VOICE ALERT (ONLY FOR ATTACKS)
+# VOICE EXPLANATION (SIMPLE + CONSEQUENCES)
 # =====================================================
 def speak_attack(attack):
-    if attack == "Normal":
+    messages = {
+        "Malware": (
+            "Warning. A malware attack is detected. "
+            "This means a harmful program is running on your system. "
+            "If ignored, your personal files and data may be stolen or damaged."
+        ),
+        "Ransomware": (
+            "Warning. A ransomware attack is detected. "
+            "Your files may be locked and money could be demanded. "
+            "If ignored, you may permanently lose access to your data."
+        ),
+        "Brute Force": (
+            "Warning. A brute force attack is detected. "
+            "Someone is trying to guess your password repeatedly. "
+            "If ignored, the attacker may gain full access to your account."
+        ),
+        "DDoS": (
+            "Warning. A denial of service attack is detected. "
+            "Your system is being flooded with fake traffic. "
+            "If ignored, your network may become slow or stop working completely."
+        )
+    }
+
+    if attack not in messages:
         return
-    message = f"Warning. Your system is under {attack} attack."
+
     try:
-        tts = gTTS(text=message, lang="en")
+        tts = gTTS(text=messages[attack], lang="en")
         audio = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
         tts.save(audio.name)
         st.audio(audio.name)
@@ -43,18 +73,33 @@ def speak_attack(attack):
         pass
 
 # =====================================================
-# CONFIDENCE SCORE
+# CONFIDENCE SCORE + ANTIBODY-LIKE LEARNING
 # =====================================================
 def confidence_score(attack):
-    ranges = {
-        "Malware": (90, 98),
-        "Ransomware": (92, 99),
-        "Brute Force": (85, 95),
-        "DDoS": (88, 96),
+    base_ranges = {
+        "Malware": (85, 90),
+        "Ransomware": (88, 92),
+        "Brute Force": (80, 88),
+        "DDoS": (82, 90),
         "Normal": (5, 15)
     }
-    low, high = ranges.get(attack, (50, 60))
-    return random.randint(low, high)
+
+    if attack == "Normal":
+        low, high = base_ranges["Normal"]
+        return random.randint(low, high), "No threat detected"
+
+    memory = st.session_state.attack_memory.get(attack, 0)
+    bonus = min(memory * 2, 10)   # max +10%
+
+    low, high = base_ranges[attack]
+    confidence = random.randint(low + bonus, high + bonus)
+
+    explanation = (
+        f"This attack pattern has been detected {memory + 1} times. "
+        "The system has learned this behavior and detection reliability is improving."
+    )
+
+    return confidence, explanation
 
 # =====================================================
 # SIMULATED DATA
@@ -62,64 +107,46 @@ def confidence_score(attack):
 malicious_files = ["update_service.exe", "svhost32.dll", "temp_cleaner.exe"]
 
 network_attackers = [
-    {
-        "ip": "192.168.1.45",
-        "city": "Chennai",
-        "country": "India",
-        "isp": "Local Broadband ISP"
-    },
-    {
-        "ip": "103.25.64.12",
-        "city": "Mumbai",
-        "country": "India",
-        "isp": "FiberNet Services"
-    },
-    {
-        "ip": "45.67.89.101",
-        "city": "Bengaluru",
-        "country": "India",
-        "isp": "Cloud Hosting Provider"
-    }
+    {"ip": "192.168.1.45", "city": "Chennai", "country": "India", "isp": "Local Broadband ISP"},
+    {"ip": "103.25.64.12", "city": "Mumbai", "country": "India", "isp": "FiberNet Services"},
+    {"ip": "45.67.89.101", "city": "Bengaluru", "country": "India", "isp": "Cloud Hosting Provider"}
 ]
 
 # =====================================================
 # ATTACK DETECTION (SIMULATED)
 # =====================================================
 def detect_attack():
-    return random.choice(["Normal", "Malware", "Brute Force", "DDoS", "Ransomware"])
+    return random.choice(["Normal", "Malware", "Ransomware", "Brute Force", "DDoS"])
 
 # =====================================================
-# SIDEBAR (NETWORK ATTACK DETAILS)
+# SIDEBAR – NETWORK ATTACK DETAILS
 # =====================================================
-st.sidebar.title("🛡️ Network Intelligence")
+st.sidebar.title("🌐 Network Attack Info")
 
 if st.session_state.network_info:
     info = st.session_state.network_info
-    st.sidebar.error("🚨 Active Network Attack")
+    st.sidebar.error("🚨 Network Attack Detected")
     st.sidebar.markdown(f"""
-**Attack Type:** {info['attack']}
-
-**Attacker IP:** {info['ip']}
-
-**Location:** {info['city']}, {info['country']}
-
+**Attack Type:** {info['attack']}  
+**Attacker IP:** {info['ip']}  
+**Location:** {info['city']}, {info['country']}  
 **ISP:** {info['isp']}
 """)
     st.sidebar.info(
         "📍 Recommended Action:\n"
         "- Block the IP address\n"
-        "- Preserve logs\n"
+        "- Save system logs\n"
         "- Report to Cyber Crime Cell\n"
         "- https://cybercrime.gov.in"
     )
 else:
-    st.sidebar.success("No active network attack detected.")
+    st.sidebar.success("No active network attack")
 
 # =====================================================
-# UI HEADER
+# MAIN UI
 # =====================================================
 st.title("🛡️ AI Security Assistant")
-st.write("Real-time attack detection with confidence scoring")
+st.write("Real-time attack detection with learning-based confidence")
 
 col1, col2 = st.columns(2)
 with col1:
@@ -132,14 +159,19 @@ with col2:
 st.divider()
 
 status_box = st.empty()
+info_box = st.empty()
 action_box = st.empty()
 
 # =====================================================
-# MAIN LOGIC
+# MAIN SCANNING LOGIC
 # =====================================================
 if st.session_state.scanning:
     attack = detect_attack()
-    confidence = confidence_score(attack)
+    confidence, confidence_reason = confidence_score(attack)
+
+    # Increase immune memory
+    if attack in st.session_state.attack_memory:
+        st.session_state.attack_memory[attack] += 1
 
     # Reset sidebar if not network attack
     if attack not in ["Brute Force", "DDoS"]:
@@ -155,18 +187,20 @@ if st.session_state.scanning:
     if attack == "Normal":
         status_box.success(
             f"✅ SYSTEM STATUS: SAFE\n\n"
-            f"No active threats detected.\n\n"
-            f"🧠 Confidence Score: {confidence}%"
+            f"No active threats detected."
         )
+        info_box.info(f"🧠 AI Confidence: {confidence}%")
 
     elif attack == "Malware":
         file = random.choice(malicious_files)
         status_box.error(
             f"🦠 MALWARE ATTACK DETECTED\n\n"
-            f"Suspicious file: **{file}**\n\n"
-            f"🧠 Confidence Score: **{confidence}%**"
+            f"Suspicious file: **{file}**"
         )
-
+        info_box.info(
+            f"🧠 AI Confidence: **{confidence}%**\n\n"
+            f"🧬 Learning Status: {confidence_reason}"
+        )
         if st.button("🧹 Remove Malware"):
             action_box.success(
                 f"The file **{file}** has been isolated.\n"
@@ -177,17 +211,18 @@ if st.session_state.scanning:
         file = random.choice(malicious_files)
         status_box.error(
             f"🔐 RANSOMWARE ATTACK DETECTED\n\n"
-            f"Affected file: **{file}**\n\n"
-            f"🧠 Confidence Score: **{confidence}%**"
+            f"Affected file: **{file}**"
         )
-
+        info_box.info(
+            f"🧠 AI Confidence: **{confidence}%**\n\n"
+            f"🧬 Learning Status: {confidence_reason}"
+        )
         action_box.warning(
             "Disconnect the network immediately and restore from backup."
         )
 
     elif attack in ["Brute Force", "DDoS"]:
         attacker = random.choice(network_attackers)
-
         st.session_state.network_info = {
             "attack": attack,
             "ip": attacker["ip"],
@@ -198,18 +233,21 @@ if st.session_state.scanning:
 
         status_box.error(
             f"🌐 {attack.upper()} ATTACK DETECTED\n\n"
-            f"Source IP: **{attacker['ip']}**\n\n"
-            f"🧠 Confidence Score: **{confidence}%**"
+            f"Source IP: **{attacker['ip']}**"
+        )
+        info_box.info(
+            f"🧠 AI Confidence: **{confidence}%**\n\n"
+            f"🧬 Learning Status: {confidence_reason}"
         )
 
         if st.button("🚫 Block IP"):
-            action_box.success(f"IP address **{attacker['ip']}** has been blocked.")
+            action_box.success(f"IP **{attacker['ip']}** has been blocked.")
 
-    # Log history
+    # Log attack history
     st.session_state.history.append({
         "Time": timestamp,
         "Attack Type": attack,
-        "Confidence (%)": confidence
+        "AI Confidence (%)": confidence
     })
 
     time.sleep(2)
