@@ -58,7 +58,11 @@ def generate_event():
         ("login_failed", 8),
         ("login_success", 1),
         ("high_traffic", 9),
-        ("normal_activity", 1)
+        ("normal_activity", 1),
+        ("suspicious_query", 8),
+        ("restricted_file_access", 9),
+        ("multiple_port_scan", 7),
+        ("mass_email_outbound", 8)
     ]
     return random.choice(events)
 
@@ -68,11 +72,23 @@ def generate_event():
 def detect_attack(event_window):
     failed = event_window.count("login_failed")
     traffic = event_window.count("high_traffic")
+    sql_attempts = event_window.count("suspicious_query")
+    file_access = event_window.count("restricted_file_access")
+    port_scans = event_window.count("multiple_port_scan")
+    phishing = event_window.count("mass_email_outbound")
 
     if failed >= 4:
         return "Brute Force Attack", 90
     elif traffic >= 4:
         return "DDoS-like Attack", 85
+    elif sql_attempts >= 3:
+        return "SQL Injection Attempt", 88
+    elif file_access >= 3:
+        return "Potential Malware/Ransomware Activity", 92
+    elif port_scans >= 3:
+        return "Port Scanning Detected", 80
+    elif phishing >= 3:
+        return "Possible Phishing Campaign", 84
     else:
         return "Normal Activity", 10
 
@@ -90,6 +106,22 @@ def bot_response(attack):
         "Warning. Abnormal traffic spike detected. "
         "Enable firewall protection, apply rate limiting, "
         "and monitor incoming network requests.",
+
+        "SQL Injection Attempt":
+        "Critical alert. Suspicious database query patterns detected. "
+        "Use parameterized queries, validate inputs, and review database logs immediately.",
+
+        "Potential Malware/Ransomware Activity":
+        "Critical alert. Repeated restricted file access has been detected. "
+        "Isolate the endpoint, run malware scans, and restore from trusted backups if needed.",
+
+        "Port Scanning Detected":
+        "Warning. Repeated probing across multiple ports detected. "
+        "Block suspicious source IPs and tighten firewall rules.",
+
+        "Possible Phishing Campaign":
+        "Warning. Unusual outbound email behavior suggests phishing activity. "
+        "Suspend risky accounts, enforce MFA, and review recent email activity.",
 
         "Normal Activity":
         "System is operating normally. No threats detected."
