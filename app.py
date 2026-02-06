@@ -1,168 +1,127 @@
 import streamlit as st
 import random
 import time
-import matplotlib.pyplot as plt
+import pandas as pd
 from gtts import gTTS
 import tempfile
+from datetime import datetime
 
-# =====================================================
-# PAGE CONFIG
-# =====================================================
-st.set_page_config(
-    page_title="AI Security App",
-    page_icon="🛡️",
-    layout="wide"
-)
+st.set_page_config(page_title="AI Security App", page_icon="🛡️", layout="wide")
 
-# =====================================================
-# SESSION STATE
-# =====================================================
-if "started" not in st.session_state:
-    st.session_state.started = False
-if "events" not in st.session_state:
-    st.session_state.events = []
-if "risk" not in st.session_state:
-    st.session_state.risk = []
+# ---------------- SESSION STATE ----------------
+if "scanning" not in st.session_state:
+    st.session_state.scanning = False
 if "last_attack" not in st.session_state:
-    st.session_state.last_attack = ""
+    st.session_state.last_attack = "Normal"
+if "history" not in st.session_state:
+    st.session_state.history = []
 
-# =====================================================
-# VOICE ALERT (ONLY FOR ATTACKS)
-# =====================================================
-def speak_attack(attack):
-    if attack == "Normal Activity":
-        return
-
-    message = f"Warning. Your system is under {attack}. Please take immediate action."
-
+# ---------------- VOICE ALERT ----------------
+def speak(msg):
     try:
-        tts = gTTS(text=message, lang="en")
+        tts = gTTS(text=msg, lang="en")
         audio = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
         tts.save(audio.name)
         st.audio(audio.name)
-    except Exception:
+    except:
         pass
 
-# =====================================================
-# WELCOME SCREEN (TEXT ONLY, NO VOICE)
-# =====================================================
-if not st.session_state.started:
-    st.title("🛡️ AI Security App")
-    st.subheader("Real-time cyber attack detection system")
-    st.write("Click start to begin live monitoring of your system.")
+# ---------------- SIMULATION DATA ----------------
+malicious_files = ["update_service.exe", "svhost32.dll", "temp_cleaner.exe"]
+attacker_ips = ["192.168.1.45", "103.25.64.12", "45.67.89.101"]
 
-    if st.button("▶ Start Application"):
-        st.session_state.started = True
-        st.success("✅ Welcome! Live monitoring has started.")
-        st.stop()
+# ---------------- ATTACK DETECTION ----------------
+def detect_attack():
+    attacks = ["Normal", "Malware", "Brute Force", "DDoS"]
+    return random.choice(attacks)
 
-    st.stop()
+# ---------------- UI ----------------
+st.title("🛡️ AI Security Assistant")
+st.write("Real-time protection and guided response system")
 
-# =====================================================
-# SIDEBAR
-# =====================================================
-st.sidebar.title("AI Security App")
-page = st.sidebar.radio(
-    "Navigation",
-    ["Live Monitoring", "Risk Graph", "About"]
-)
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("▶ Start Scan"):
+        st.session_state.scanning = True
+with col2:
+    if st.button("⏹ Stop Scan"):
+        st.session_state.scanning = False
 
-# =====================================================
-# EVENT GENERATOR
-# =====================================================
-def generate_event():
-    return random.choice([
-        "normal_activity",
-        "login_failed",
-        "high_traffic",
-        "malware_process",
-        "suspicious_file_write",
-        "port_scan"
-    ])
+st.divider()
 
-# =====================================================
-# ATTACK DETECTION (CLEAR TYPES)
-# =====================================================
-def detect_attack(events):
-    if events.count("malware_process") >= 2:
-        return "Malware Attack", 95
-    if events.count("suspicious_file_write") >= 3:
-        return "Ransomware Attack", 97
-    if events.count("port_scan") >= 3:
-        return "Port Scanning Attack", 80
-    if events.count("login_failed") >= 4:
-        return "Brute Force Attack", 90
-    if events.count("high_traffic") >= 4:
-        return "DDoS Attack", 85
-    return "Normal Activity", 10
+status_box = st.empty()
+action_box = st.empty()
 
-# =====================================================
-# LIVE MONITORING (VERY CLEAR OUTPUT)
-# =====================================================
-if page == "Live Monitoring":
-    st.header("🔴 Live System Monitoring")
-    st.write("The system is actively checking for cyber attacks.")
-    st.divider()
+# ---------------- MAIN LOGIC ----------------
+if st.session_state.scanning:
+    attack = detect_attack()
 
-    display = st.empty()
+    if attack != st.session_state.last_attack:
+        if attack == "Malware":
+            speak("Warning. Your system is under a malware attack.")
+        elif attack == "Brute Force":
+            speak("Warning. A brute force attack is detected.")
+        elif attack == "DDoS":
+            speak("Warning. A denial of service attack is detected.")
 
-    if st.button("▶ Start Live Detection"):
-        for _ in range(12):
-            event = generate_event()
-            st.session_state.events.append(event)
+        st.session_state.last_attack = attack
 
-            recent = st.session_state.events[-10:]
-            attack, risk = detect_attack(recent)
-            st.session_state.risk.append(risk)
+    if attack == "Normal":
+        status_box.success("✅ System is safe. No threats detected.")
 
-            # Voice only when attack changes
-            if attack != st.session_state.last_attack:
-                speak_attack(attack)
-                st.session_state.last_attack = attack
+    elif attack == "Malware":
+        file = random.choice(malicious_files)
+        status_box.error(
+            f"🦠 MALWARE ATTACK DETECTED\n\n"
+            f"Suspicious file identified: **{file}**"
+        )
 
-            if attack == "Normal Activity":
-                display.success(
-                    "✅ SYSTEM STATUS: SAFE\n\nNo attack detected. Your system is secure."
-                )
-            else:
-                display.error(
-                    f"🚨 ALERT: YOUR SYSTEM IS UNDER A **{attack.upper()}**\n\n"
-                    f"⚠️ Risk Level: {risk} / 100\n\n"
-                    f"👉 Immediate action is required."
-                )
+        if st.button("🧹 Remove Malware"):
+            action_box.success(
+                f"The file **{file}** has been isolated.\n\n"
+                "Please run a full antivirus scan."
+            )
 
-            time.sleep(1)
+    elif attack == "Brute Force":
+        ip = random.choice(attacker_ips)
+        status_box.error(
+            f"🔐 BRUTE FORCE ATTACK DETECTED\n\n"
+            f"Attacking IP address: **{ip}**"
+        )
 
-# =====================================================
-# RISK GRAPH
-# =====================================================
-elif page == "Risk Graph":
-    st.header("📊 Risk Level Over Time")
+        if st.button("🚫 Block IP"):
+            action_box.success(f"IP address **{ip}** has been blocked.")
 
-    if len(st.session_state.risk) > 1:
-        fig, ax = plt.subplots()
-        ax.plot(st.session_state.risk, linewidth=2)
-        ax.set_ylim(0, 100)
-        ax.set_xlabel("Time")
-        ax.set_ylabel("Risk Level")
-        ax.grid(True)
-        st.pyplot(fig)
-    else:
-        st.info("Start live monitoring to see the risk graph.")
+        st.info(
+            "📍 Please report this incident to your nearest Cyber Crime Police Station\n"
+            "or visit: https://cybercrime.gov.in"
+        )
 
-# =====================================================
-# ABOUT
-# =====================================================
-elif page == "About":
-    st.header("ℹ️ About This System")
-    st.write("""
-    This application detects cyber attacks in real time and clearly informs the user
-    when the system is under attack.
+    elif attack == "DDoS":
+        ip = random.choice(attacker_ips)
+        status_box.error(
+            f"🌐 DDoS ATTACK DETECTED\n\n"
+            f"Source IP: **{ip}**"
+        )
 
-    **Detected Attacks**
-    - Malware Attack
-    - Ransomware Attack
-    - Brute Force Attack
-    - DDoS Attack
-    - Port Scanning Attack
-    """)
+        st.info(
+            "📍 This is a serious network attack.\n"
+            "Please report it to the nearest Cyber Crime Cell or at:\n"
+            "https://cybercrime.gov.in"
+        )
+
+    st.session_state.history.append({
+        "Time": datetime.now().strftime("%H:%M:%S"),
+        "Attack": attack
+    })
+
+    time.sleep(2)
+
+# ---------------- ATTACK HISTORY ----------------
+st.divider()
+st.subheader("📜 Attack History")
+
+if st.session_state.history:
+    st.dataframe(pd.DataFrame(st.session_state.history))
+else:
+    st.info("No attacks recorded yet.")
