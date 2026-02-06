@@ -4,13 +4,14 @@ import time
 import matplotlib.pyplot as plt
 from gtts import gTTS
 import tempfile
+import os
 
 # =====================================================
-# PAGE CONFIG
+# PAGE CONFIG (SAFE)
 # =====================================================
 st.set_page_config(
     page_title="AI Security App",
-    page_icon="app_icon.png",
+    page_icon="🛡️",
     layout="wide"
 )
 
@@ -52,25 +53,39 @@ if "chat" not in st.session_state:
     st.session_state.chat = []
 
 # =====================================================
-# TEXT → SPEECH
+# TEXT → SPEECH (SAFE)
 # =====================================================
 def speak(text):
-    tts = gTTS(text=text, lang="en")
-    audio = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-    tts.save(audio.name)
-    st.audio(audio.name)
+    try:
+        tts = gTTS(text=text, lang="en")
+        audio = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+        tts.save(audio.name)
+        st.audio(audio.name)
+    except Exception:
+        pass  # never crash app due to audio
+
+# =====================================================
+# SAFE LOGO DISPLAY
+# =====================================================
+def show_logo(size=120):
+    if os.path.exists("app_icon.png"):
+        st.image("app_icon.png", width=size)
+    else:
+        st.markdown("### 🛡️ AI Security App")
 
 # =====================================================
 # WELCOME SCREEN
 # =====================================================
 if not st.session_state.started:
     st.markdown("<br><br>", unsafe_allow_html=True)
-    st.image("app_icon.png", width=140)
+    show_logo(140)
+
     st.markdown("<div class='title center'>AI Security App</div>", unsafe_allow_html=True)
     st.markdown(
         "<div class='subtitle center'>Real-time AI-powered threat detection</div>",
         unsafe_allow_html=True
     )
+
     st.markdown("<br>", unsafe_allow_html=True)
 
     if st.button("🚀 Start Application"):
@@ -80,15 +95,16 @@ if not st.session_state.started:
     st.stop()
 
 # =====================================================
-# SIDEBAR NAVIGATION
+# SIDEBAR
 # =====================================================
-st.sidebar.image("app_icon.png", width=80)
-st.sidebar.title("AI Security App")
+with st.sidebar:
+    show_logo(80)
+    st.title("AI Security App")
 
-page = st.sidebar.radio(
-    "Navigate",
-    ["Live Monitoring", "Risk Analysis", "Chat Assistant", "About"]
-)
+    page = st.radio(
+        "Navigate",
+        ["Live Monitoring", "Risk Analysis", "Chat Assistant", "About"]
+    )
 
 # =====================================================
 # EVENT GENERATOR
@@ -123,14 +139,15 @@ def detect(events):
 # BOT RESPONSE
 # =====================================================
 def bot_reply(attack):
-    return {
+    responses = {
         "Malware Activity": "Malware detected. Disconnect network and run antivirus.",
         "Ransomware-like Activity": "Suspicious file encryption detected. Backup data immediately.",
         "Port Scanning Attack": "Port scanning detected. Block the suspicious IP.",
         "Brute Force Attack": "Multiple failed logins detected. Change password and enable 2FA.",
         "DDoS-like Attack": "Traffic spike detected. Enable firewall and rate limiting.",
         "Normal Activity": "System is operating normally."
-    }[attack]
+    }
+    return responses[attack]
 
 # =====================================================
 # LIVE MONITORING PAGE
@@ -217,13 +234,12 @@ elif page == "About":
     st.markdown("<div class='title'>About</div>", unsafe_allow_html=True)
     st.divider()
     st.write("""
-    This is a **real-time AI-based security monitoring application** built using **Streamlit**.
-    
-    Features:
+    **AI Security App** is a real-time AI-based security monitoring system built entirely using **Streamlit**.
+
+    **Features**
     - Live attack detection
     - Malware & advanced threat detection
     - Risk visualization
     - Chat & voice alerts
-    - Cloud deployment
+    - Cloud-ready deployment
     """)
-
