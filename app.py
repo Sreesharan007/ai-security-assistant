@@ -5,61 +5,106 @@ import matplotlib.pyplot as plt
 from gtts import gTTS
 import tempfile
 
-# -------------------- PAGE CONFIG --------------------
+# =====================================================
+# PAGE CONFIG (ICON + BRANDING)
+# =====================================================
 st.set_page_config(
     page_title="AI Security App",
-    page_icon="🛡️",
+    page_icon="app_icon.png",
     layout="wide"
 )
 
-# -------------------- CUSTOM CSS --------------------
+# =====================================================
+# CUSTOM CSS (MODERN APP LOOK)
+# =====================================================
 st.markdown("""
 <style>
+body {
+    background-color: #f4f6f9;
+}
+
 .card {
     padding: 20px;
-    border-radius: 15px;
-    background-color: #f9fafb;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    border-radius: 16px;
+    background-color: white;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
     margin-bottom: 15px;
 }
+
 .title {
-    font-size: 26px;
+    font-size: 30px;
     font-weight: 700;
+    color: #0f172a;
 }
+
 .subtitle {
-    color: gray;
+    color: #64748b;
+    font-size: 15px;
 }
-.alert-high {
-    color: #d9534f;
-    font-weight: bold;
+
+.center {
+    text-align: center;
 }
-.alert-low {
-    color: #5cb85c;
-    font-weight: bold;
+
+button {
+    border-radius: 10px !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# -------------------- SIDEBAR --------------------
-st.sidebar.markdown("## 🛡️ AI Security App")
-page = st.sidebar.radio(
-    "Navigation",
-    ["📡 Live Monitoring", "📊 Risk Analysis", "💬 Chat Assistant", "ℹ️ About"]
-)
-
-# -------------------- SESSION STATE --------------------
-for key in ["events", "risk_scores", "chat"]:
+# =====================================================
+# SESSION STATE
+# =====================================================
+for key in ["events", "risk_scores", "chat", "app_started"]:
     if key not in st.session_state:
-        st.session_state[key] = []
+        st.session_state[key] = False if key == "app_started" else []
 
-# -------------------- VOICE FUNCTION --------------------
+# =====================================================
+# VOICE FUNCTION
+# =====================================================
 def speak(text):
     tts = gTTS(text=text, lang="en")
     temp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
     tts.save(temp.name)
     st.audio(temp.name, format="audio/mp3")
 
-# -------------------- EVENT GENERATOR --------------------
+# =====================================================
+# WELCOME / SPLASH SCREEN
+# =====================================================
+if not st.session_state.app_started:
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.image("app_icon.png", width=140)
+    st.markdown("<div class='title center'>AI Security App</div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div class='subtitle center'>"
+        "Real-time AI-powered threat detection & security assistant"
+        "</div>",
+        unsafe_allow_html=True
+    )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    if st.button("🚀 Enter Application"):
+        st.session_state.app_started = True
+        speak("Welcome to the AI Security Application. Real time monitoring is ready.")
+
+    st.stop()
+
+# =====================================================
+# SIDEBAR (APP NAVIGATION)
+# =====================================================
+st.sidebar.image("app_icon.png", width=90)
+st.sidebar.markdown("## AI Security App")
+st.sidebar.caption("Real-time AI Protection")
+
+page = st.sidebar.radio(
+    "Navigation",
+    ["📡 Live Monitoring", "📊 Risk Analysis", "💬 Chat Assistant", "ℹ️ About"]
+)
+
+# =====================================================
+# EVENT GENERATOR
+# =====================================================
 def generate_event():
     return random.choice([
         "login_failed",
@@ -71,7 +116,9 @@ def generate_event():
         "port_scan"
     ])
 
-# -------------------- DETECTION + CLASSIFICATION --------------------
+# =====================================================
+# DETECTION + CLASSIFICATION
+# =====================================================
 def detect_attack(window):
     if window.count("malware_process") >= 2:
         return "Malware Activity", 95, 3
@@ -85,38 +132,40 @@ def detect_attack(window):
         return "DDoS-like Attack", 85, 2
     return "Normal Activity", 10, 0
 
-# -------------------- BOT RESPONSE --------------------
+# =====================================================
+# BOT RESPONSE
+# =====================================================
 def bot_reply(attack):
     return {
-        "Malware Activity": "🚨 Malware behavior detected. Disconnect network and run antivirus scan.",
-        "Ransomware-like Activity": "🚨 Suspicious file encryption behavior detected. Backup data immediately.",
-        "Port Scanning Attack": "⚠️ Port scanning detected. Block suspicious IPs.",
-        "Brute Force Attack": "⚠️ Multiple failed logins detected. Change password and enable 2FA.",
-        "DDoS-like Attack": "⚠️ Traffic spike detected. Enable firewall and rate limiting.",
-        "Normal Activity": "✅ System operating normally."
+        "Malware Activity": "Critical alert. Malware behavior detected. Disconnect the network and run an antivirus scan.",
+        "Ransomware-like Activity": "Critical alert. Suspicious file encryption detected. Backup your data immediately.",
+        "Port Scanning Attack": "Warning. Port scanning activity detected. Block the suspicious IP.",
+        "Brute Force Attack": "Warning. Multiple failed logins detected. Change passwords and enable two-factor authentication.",
+        "DDoS-like Attack": "Warning. Abnormal traffic spike detected. Enable firewall and rate limiting.",
+        "Normal Activity": "System is operating normally. No threats detected."
     }[attack]
 
-# ======================================================
+# =====================================================
 # 📡 LIVE MONITORING PAGE
-# ======================================================
+# =====================================================
 if page == "📡 Live Monitoring":
     st.markdown("<div class='title'>📡 Live Security Monitoring</div>", unsafe_allow_html=True)
-    st.markdown("<div class='subtitle'>Real-time threat detection & classification</div>", unsafe_allow_html=True)
+    st.markdown("<div class='subtitle'>Real-time attack detection & classification</div>", unsafe_allow_html=True)
     st.divider()
 
     col1, col2, col3 = st.columns(3)
 
     start = st.button("▶ Start Monitoring")
-    reset = st.button("🔄 Reset")
+    reset = st.button("🔄 Reset System")
 
     if reset:
         st.session_state.events.clear()
         st.session_state.risk_scores.clear()
         st.session_state.chat.clear()
-        st.success("System reset successfully")
+        st.success("System reset successfully.")
 
     if start:
-        for _ in range(12):
+        for _ in range(15):
             event = generate_event()
             st.session_state.events.append(event)
 
@@ -137,9 +186,9 @@ if page == "📡 Live Monitoring":
 
             time.sleep(1)
 
-# ======================================================
+# =====================================================
 # 📊 RISK ANALYSIS PAGE
-# ======================================================
+# =====================================================
 elif page == "📊 Risk Analysis":
     st.markdown("<div class='title'>📊 Risk Analysis</div>", unsafe_allow_html=True)
     st.divider()
@@ -153,16 +202,16 @@ elif page == "📊 Risk Analysis":
         ax.grid(True)
         st.pyplot(fig)
     else:
-        st.info("Start monitoring to view risk trends.")
+        st.info("Start monitoring to see the risk graph.")
 
-# ======================================================
+# =====================================================
 # 💬 CHAT ASSISTANT PAGE
-# ======================================================
+# =====================================================
 elif page == "💬 Chat Assistant":
     st.markdown("<div class='title'>💬 AI Security Assistant</div>", unsafe_allow_html=True)
     st.divider()
 
-    user_input = st.text_input("Ask something like: Is there malware? What attack is happening?")
+    user_input = st.text_input("Ask about attacks, malware, or safety")
 
     if user_input:
         st.session_state.chat.append(("You", user_input))
@@ -183,18 +232,19 @@ elif page == "💬 Chat Assistant":
         else:
             st.success(f"**AI Bot:** {msg}")
 
-# ======================================================
+# =====================================================
 # ℹ️ ABOUT PAGE
-# ======================================================
+# =====================================================
 elif page == "ℹ️ About":
     st.markdown("<div class='title'>ℹ️ About This App</div>", unsafe_allow_html=True)
     st.divider()
     st.write("""
-    **AI Security App** is a real-time intrusion detection prototype that:
+    **AI Security App** is a real-time AI-powered security monitoring system that:
     - Detects and classifies multiple cyber attacks
-    - Visualizes risk levels dynamically
-    - Provides voice-based security alerts
+    - Monitors behavior continuously
+    - Visualizes risk levels
+    - Provides voice-based alerts
     - Runs as an installable Progressive Web App (PWA)
 
-    Built using **Python + Streamlit** and deployed on the cloud.
+    Developed using **Python & Streamlit**.
     """)
