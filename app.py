@@ -2,15 +2,36 @@ import streamlit as st
 import random
 import time
 import matplotlib.pyplot as plt
+from gtts import gTTS
+import tempfile
 
-st.set_page_config(page_title="Real-Time AI Security Assistant", layout="centered")
+# ----------------------------------
+# Page configuration
+# ----------------------------------
+st.set_page_config(
+    page_title="AI Security Assistant",
+    page_icon="🛡️",
+    layout="centered"
+)
 
-st.title("🛡️ Real-Time AI Security Assistant")
-st.caption("Live attack detection with chatbot & risk visualization")
+# ----------------------------------
+# Header UI
+# ----------------------------------
+st.markdown(
+    """
+    <h1 style='text-align:center;'>🛡️ AI Security Assistant</h1>
+    <p style='text-align:center; color:gray;'>
+    Real-time attack detection • Risk visualization • Voice alerts
+    </p>
+    """,
+    unsafe_allow_html=True
+)
 
-# -------------------------------
-# Session state initialization
-# -------------------------------
+st.divider()
+
+# ----------------------------------
+# Session state
+# ----------------------------------
 if "events" not in st.session_state:
     st.session_state.events = []
 
@@ -20,108 +41,159 @@ if "risk_scores" not in st.session_state:
 if "chat" not in st.session_state:
     st.session_state.chat = []
 
-# -------------------------------
+# ----------------------------------
+# Voice function (Text → Speech)
+# ----------------------------------
+def speak(text):
+    tts = gTTS(text=text, lang="en")
+    temp_audio = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+    tts.save(temp_audio.name)
+    st.audio(temp_audio.name, format="audio/mp3")
+
+# ----------------------------------
 # Real-time event generator
-# -------------------------------
-def live_event():
+# ----------------------------------
+def generate_event():
     events = [
-        ("login_failed", 7),
+        ("login_failed", 8),
         ("login_success", 1),
-        ("high_traffic", 8),
+        ("high_traffic", 9),
         ("normal_activity", 1)
     ]
     return random.choice(events)
 
-# -------------------------------
+# ----------------------------------
 # Detection logic
-# -------------------------------
-def detect_attack(events):
-    failed = events.count("login_failed")
-    traffic = events.count("high_traffic")
+# ----------------------------------
+def detect_attack(event_window):
+    failed = event_window.count("login_failed")
+    traffic = event_window.count("high_traffic")
 
-    if failed > 3:
+    if failed >= 4:
         return "Brute Force Attack", 90
-    if traffic > 3:
+    elif traffic >= 4:
         return "DDoS-like Attack", 85
-    return "Normal Activity", 10
+    else:
+        return "Normal Activity", 10
 
-# -------------------------------
+# ----------------------------------
 # AI Bot response
-# -------------------------------
+# ----------------------------------
 def bot_response(attack):
     responses = {
         "Brute Force Attack":
-        "🚨 Brute force attack detected.\n\n🔐 Advice:\n• Change password\n• Enable 2FA\n• Block suspicious IPs",
+        "Alert. Multiple failed login attempts detected. "
+        "Please change your password, enable two-factor authentication, "
+        "and block suspicious IP addresses.",
 
         "DDoS-like Attack":
-        "🚨 Traffic flood detected.\n\n🌐 Advice:\n• Enable firewall\n• Apply rate limiting\n• Monitor traffic",
+        "Warning. Abnormal traffic spike detected. "
+        "Enable firewall protection, apply rate limiting, "
+        "and monitor incoming network requests.",
 
         "Normal Activity":
-        "✅ System is stable. No threats detected."
+        "System is operating normally. No threats detected."
     }
     return responses[attack]
 
-# -------------------------------
-# Start monitoring
-# -------------------------------
-if st.button("▶ Start Real-Time Monitoring"):
+# ----------------------------------
+# Control panel
+# ----------------------------------
+st.subheader("🎛️ Control Panel")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    start = st.button("▶ Start Real-Time Monitoring")
+
+with col2:
+    reset = st.button("🔄 Reset System")
+
+if reset:
+    st.session_state.events.clear()
+    st.session_state.risk_scores.clear()
+    st.session_state.chat.clear()
+    st.success("System reset successfully.")
+
+st.divider()
+
+# ----------------------------------
+# Real-time monitoring loop
+# ----------------------------------
+if start:
     for _ in range(15):
-        event, severity = live_event()
+        event, severity = generate_event()
         st.session_state.events.append(event)
 
         recent_events = st.session_state.events[-10:]
         attack, risk = detect_attack(recent_events)
 
         st.session_state.risk_scores.append(risk)
-        reply = bot_response(attack)
 
-        st.session_state.chat.append(("AI Bot", reply))
+        response = bot_response(attack)
+        st.session_state.chat.append(("AI Bot", response))
 
-        st.subheader(f"🔍 Status: {attack}")
+        # Status UI
+        if attack == "Normal Activity":
+            st.success(f"✅ {attack}")
+        else:
+            st.error(f"🚨 {attack}")
+
         st.write(f"📌 Latest Event: **{event}**")
-        st.write(f"⚠️ Risk Score: **{risk}/100**")
+        st.write(f"⚠️ Risk Level: **{risk} / 100**")
 
+        speak(response)
         time.sleep(1)
 
-# -------------------------------
-# Risk graph
-# -------------------------------
-st.markdown("### 📊 Live Risk Level")
+st.divider()
+
+# ----------------------------------
+# Risk Graph
+# ----------------------------------
+st.subheader("📊 Live Risk Level Graph")
 
 if len(st.session_state.risk_scores) > 1:
     fig, ax = plt.subplots()
-    ax.plot(st.session_state.risk_scores)
+    ax.plot(st.session_state.risk_scores, linewidth=2)
+    ax.set_ylim(0, 100)
     ax.set_xlabel("Time")
     ax.set_ylabel("Risk Score")
-    ax.set_ylim(0, 100)
+    ax.grid(True)
     st.pyplot(fig)
 else:
-    st.info("Risk graph will appear once monitoring starts.")
+    st.info("Start monitoring to view risk graph.")
 
-# -------------------------------
-# Chatbot UI
-# -------------------------------
-st.markdown("### 💬 Talk to the AI Security Bot")
+st.divider()
 
-user_input = st.text_input("Ask something like: *What should I do now?*")
+# ----------------------------------
+# Chat Interface
+# ----------------------------------
+st.subheader("💬 Talk to the AI Security Bot")
+
+user_input = st.text_input(
+    "Ask something like: *What should I do now?* or *Is my system safe?*"
+)
 
 if user_input:
     st.session_state.chat.append(("You", user_input))
 
-    if "password" in user_input.lower():
-        answer = "🔐 Use a strong password with symbols, numbers, and avoid reuse."
+    if "safe" in user_input.lower():
+        answer = "I am continuously monitoring your system. Currently, no critical threat is detected."
     elif "attack" in user_input.lower():
-        answer = "🚨 If an attack is detected, follow the precautions shown above immediately."
+        answer = "If an attack is detected, follow the recommended security actions immediately."
+    elif "password" in user_input.lower():
+        answer = "Use a strong password with uppercase, lowercase, numbers, and symbols. Avoid reuse."
     else:
-        answer = "🤖 I'm monitoring your system in real time. Let me know if you need help."
+        answer = "I am here to help. Please ask about security status or precautions."
 
     st.session_state.chat.append(("AI Bot", answer))
+    speak(answer)
 
-# -------------------------------
+# ----------------------------------
 # Display chat history
-# -------------------------------
-for sender, msg in st.session_state.chat[-6:]:
+# ----------------------------------
+for sender, message in st.session_state.chat[-8:]:
     if sender == "You":
-        st.info(f"**You:** {msg}")
+        st.info(f"**You:** {message}")
     else:
-        st.success(f"**AI Bot:** {msg}")
+        st.success(f"**AI Bot:** {message}")
