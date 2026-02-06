@@ -16,17 +16,10 @@ st.set_page_config(
 )
 
 # =====================================================
-# CUSTOM CSS (CLEAN UI)
+# BASIC STYLING
 # =====================================================
 st.markdown("""
 <style>
-.card {
-    padding: 18px;
-    border-radius: 14px;
-    background-color: white;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-    margin-bottom: 12px;
-}
 .title {
     font-size: 28px;
     font-weight: 700;
@@ -53,7 +46,7 @@ if "chat" not in st.session_state:
     st.session_state.chat = []
 
 # =====================================================
-# TEXT → SPEECH (SAFE)
+# TEXT TO SPEECH (SAFE)
 # =====================================================
 def speak(text):
     try:
@@ -62,23 +55,18 @@ def speak(text):
         tts.save(audio.name)
         st.audio(audio.name)
     except Exception:
-        pass  # never crash app due to audio
-
-# =====================================================
-# SAFE LOGO DISPLAY
-# =====================================================
-def show_logo(size=120):
-    if os.path.exists("app_icon.png"):
-        st.image("app_icon.png", width=size)
-    else:
-        st.markdown("### 🛡️ AI Security App")
+        pass
 
 # =====================================================
 # WELCOME SCREEN
 # =====================================================
 if not st.session_state.started:
     st.markdown("<br><br>", unsafe_allow_html=True)
-    show_logo(140)
+
+    if os.path.exists("app_icon.png"):
+        st.image("app_icon.png", width=120)
+    else:
+        st.markdown("## 🛡️ AI Security App")
 
     st.markdown("<div class='title center'>AI Security App</div>", unsafe_allow_html=True)
     st.markdown(
@@ -95,16 +83,14 @@ if not st.session_state.started:
     st.stop()
 
 # =====================================================
-# SIDEBAR
+# SIDEBAR NAVIGATION
 # =====================================================
-with st.sidebar:
-    show_logo(80)
-    st.title("AI Security App")
+st.sidebar.title("🛡️ AI Security App")
 
-    page = st.radio(
-        "Navigate",
-        ["Live Monitoring", "Risk Analysis", "Chat Assistant", "About"]
-    )
+page = st.sidebar.radio(
+    "Navigate",
+    ["Live Monitoring", "Risk Analysis", "Chat Assistant", "About"]
+)
 
 # =====================================================
 # EVENT GENERATOR
@@ -140,24 +126,24 @@ def detect(events):
 # =====================================================
 def bot_reply(attack):
     responses = {
-        "Malware Activity": "Malware detected. Disconnect network and run antivirus.",
+        "Malware Activity": "Malware detected. Disconnect the network and run antivirus.",
         "Ransomware-like Activity": "Suspicious file encryption detected. Backup data immediately.",
-        "Port Scanning Attack": "Port scanning detected. Block the suspicious IP.",
-        "Brute Force Attack": "Multiple failed logins detected. Change password and enable 2FA.",
+        "Port Scanning Attack": "Port scanning detected. Block suspicious IPs.",
+        "Brute Force Attack": "Multiple failed logins detected. Change passwords and enable 2FA.",
         "DDoS-like Attack": "Traffic spike detected. Enable firewall and rate limiting.",
         "Normal Activity": "System is operating normally."
     }
     return responses[attack]
 
 # =====================================================
-# LIVE MONITORING PAGE
+# LIVE MONITORING (SENTENCE-BASED)
 # =====================================================
 if page == "Live Monitoring":
     st.markdown("<div class='title'>Live Monitoring</div>", unsafe_allow_html=True)
     st.markdown("<div class='subtitle'>Real-time attack detection</div>", unsafe_allow_html=True)
     st.divider()
 
-    col1, col2, col3 = st.columns(3)
+    output = st.empty()
 
     if st.button("▶ Start Monitoring"):
         for _ in range(12):
@@ -168,21 +154,25 @@ if page == "Live Monitoring":
             attack, risk, label = detect(recent)
             st.session_state.risk.append(risk)
 
-            with col1:
-                st.markdown(f"<div class='card'><b>Status</b><br>{attack}</div>", unsafe_allow_html=True)
-            with col2:
-                st.markdown(f"<div class='card'><b>Risk</b><br>{risk}/100</div>", unsafe_allow_html=True)
-            with col3:
-                st.markdown(f"<div class='card'><b>Label</b><br>{label}</div>", unsafe_allow_html=True)
-
             message = bot_reply(attack)
             st.session_state.chat.append(("AI", message))
             speak(message)
 
+            output.markdown(f"""
+### 🔴 Live Security Status
+
+- 🔍 **Detected Activity:** `{attack}`
+- ⚠️ **Risk Score:** `{risk} / 100`
+- 🏷️ **Attack Label:** `{label}`
+- 📌 **Latest Event:** `{event}`
+
+🕒 *Monitoring system behavior in real time...*
+""")
+
             time.sleep(1)
 
 # =====================================================
-# RISK ANALYSIS PAGE
+# RISK ANALYSIS
 # =====================================================
 elif page == "Risk Analysis":
     st.markdown("<div class='title'>Risk Analysis</div>", unsafe_allow_html=True)
@@ -197,26 +187,26 @@ elif page == "Risk Analysis":
         ax.grid(True)
         st.pyplot(fig)
     else:
-        st.info("Start monitoring to see risk graph")
+        st.info("Start monitoring to view the risk graph.")
 
 # =====================================================
-# CHAT ASSISTANT PAGE
+# CHAT ASSISTANT
 # =====================================================
 elif page == "Chat Assistant":
     st.markdown("<div class='title'>AI Chat Assistant</div>", unsafe_allow_html=True)
     st.divider()
 
-    user = st.text_input("Ask about attacks or system status")
+    user = st.text_input("Ask about attacks, malware, or system status")
 
     if user:
         st.session_state.chat.append(("You", user))
 
         if "malware" in user.lower():
-            answer = "Malware is detected by abnormal process and file behavior."
+            answer = "Malware is detected using abnormal process and file behavior."
         elif "label" in user.lower():
             answer = "Labels: 0-Normal, 1-Brute Force, 2-DDoS, 3-Malware, 4-Port Scan, 5-Ransomware."
         else:
-            answer = "I am monitoring the system in real time."
+            answer = "I am monitoring the system continuously in real time."
 
         st.session_state.chat.append(("AI", answer))
         speak(answer)
@@ -234,12 +224,12 @@ elif page == "About":
     st.markdown("<div class='title'>About</div>", unsafe_allow_html=True)
     st.divider()
     st.write("""
-    **AI Security App** is a real-time AI-based security monitoring system built entirely using **Streamlit**.
+    **AI Security App** is a real-time security monitoring application built using **Streamlit**.
 
     **Features**
-    - Live attack detection
-    - Malware & advanced threat detection
+    - Real-time attack detection
+    - Malware and advanced threat detection
     - Risk visualization
-    - Chat & voice alerts
+    - Chat and voice alerts
     - Cloud-ready deployment
     """)
